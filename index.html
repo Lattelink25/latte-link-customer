@@ -28,7 +28,7 @@
             max-width: 400px; /* Max width for larger screens */
             text-align: center;
         }
-        input[type="text"], /* Changed from email/tel/number to just text for flexibility */
+        input[type="text"],
         input[type="number"] {
             width: 100%;
             padding: 12px;
@@ -88,6 +88,7 @@
         <h1 class="text-3xl font-extrabold text-gray-900 mb-6">☕ LatteLink</h1>
         <p class="text-gray-600 mb-8">Scan QR & Check-In for your coffee rewards!</p>
 
+        <!-- Removed action and method from form tag. JavaScript will handle submission. -->
         <form id="checkInForm">
             <div class="mb-4">
                 <label for="emailOrPhone" class="block text-left text-sm font-medium text-gray-700 mb-1">Your Email or Phone:</label>
@@ -111,8 +112,10 @@
     <script>
         // --- IMPORTANT: REPLACE THIS URL WITH YOUR GOOGLE APPS SCRIPT WEB APP URL ---
         // This is the URL you copied after deploying your LatteLink Backend Apps Script.
-        // It should look like: 'https://script.google.com/macros/s/AKfycBx.../exec'
-        const APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx0NQkkN9_xzHlrQ4KdTV6ZfnkscpJtFBUzCkKcY9kf5HTAoi7QVBC2qN_hvexgccQg/exec; // <--- PASTE YOUR URL HERE!
+        // Your URL was: 'https://script.google.com/macros/s/AKfycbx0NQkkN9_xzHlrQ4KdTV6ZfnkscpJtFBUzCkKcY9kf5HTAoi7QVBC2qN_hvexgccQg/exec'
+        // Make sure there is NO semicolon INSIDE the closing quote!
+        const APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxBzazxkLT0lGIUTiEyXrkdpRUxRQgXDxpi8F0djsJG3JtTte0_-53carKT5mqTpnm_/exec'; // <--- PASTE YOUR URL HERE!
+
         // Get references to elements on our page
         const form = document.getElementById('checkInForm');
         const emailOrPhoneInput = document.getElementById('emailOrPhone');
@@ -156,7 +159,8 @@
 
         // What happens when the customer clicks the "Check In" button
         form.addEventListener('submit', async (event) => {
-            event.preventDefault(); // Stop the page from refreshing (important!)
+            event.preventDefault(); // <--- THIS IS BACK! It stops the page from reloading.
+            console.log('Form submitted! Sending data to Apps Script...'); // Added for debugging
 
             setLoading(true); // Show loading spinner and disable button
 
@@ -164,9 +168,9 @@
             const staffPin = staffPinInput.value;
 
             // Prepare the data to send to our robot (Apps Script)
-            const formData = new FormData();
+            const formData = new FormData(); // Using FormData is fine for Apps Script
             formData.append('emailOrPhone', emailOrPhone);
-            formData.append('staffPin', staffPin); // Sending the PIN, but robot doesn't check it yet
+            formData.append('staffPin', staffPin);
 
             try {
                 // Send the data to our Apps Script robot!
@@ -175,8 +179,14 @@
                     body: formData // The data we prepared
                 });
 
+                // Check if the response was successful before trying to read JSON
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 // Get the answer back from the robot
                 const data = await response.json();
+                console.log('Response from Apps Script:', data); // Added for debugging
 
                 if (data.success) {
                     showMessage(data.message, false); // Show success message
@@ -190,7 +200,7 @@
             } catch (error) {
                 // If something goes wrong with sending or receiving data
                 console.error('Error during fetch:', error);
-                showMessage('Network error or problem connecting. Please try again!', true);
+                showMessage('Network error or problem connecting. Please try again! Check console for details.', true);
             } finally {
                 setLoading(false); // Hide loading spinner and enable button
             }
